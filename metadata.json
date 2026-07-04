@@ -1,0 +1,6 @@
+{
+  "name": "Flutter Scraper Simulator",
+  "description": "An interactive Material 3 emulator and playground for a scalable client-side Flutter web scraper architecture targeting Korean government portals.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
