@@ -29,6 +29,9 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+          cache: gradle
+
+      - name: Verify Java
         run: java -version
 
       - name: Install Capacitor
