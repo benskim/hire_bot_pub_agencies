@@ -32,6 +32,7 @@ jobs:
           distribution: temurin
           java-version: 21
           cache: gradle
+          build-root-directory: android  # 👈 Gradle 파일들이 들어있는 폴더 경로를 명시해 줍니다.
 
       - name: Verify Java
         run: java -version
