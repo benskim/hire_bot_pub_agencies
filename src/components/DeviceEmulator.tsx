@@ -1,4 +1,11 @@
 import React, { useState, useEffect } from "react";
+import {
+  trackEvent,
+  trackButtonClick,
+  trackFormSubmission,
+  trackInputInteraction,
+  trackNavigation,
+} from "../lib/firebaseAnalytics";
 import { 
   Play, 
   RotateCw, 
@@ -107,14 +114,27 @@ export default function DeviceEmulator({
     e.preventDefault();
     setPhoneError("");
 
+    trackFormSubmission("add_agency_form", {
+      agency_name_length: phoneName.trim().length,
+      url_length: phoneUrl.trim().length,
+    });
+
     const errorMsg = onAddAgency(phoneName, phoneUrl);
     if (errorMsg) {
       setPhoneError(errorMsg);
+      trackEvent("agency_add_failed", { error_message: errorMsg });
     } else {
       setPhoneName("");
       setPhoneUrl("");
-      // Quick temporary UI alert or feedback can go here if needed
+      trackEvent("agency_add_success", {
+        agency_name: phoneName.trim(),
+      });
     }
+  };
+
+  const handleTabChange = (nextTab: "results" | "targets") => {
+    setActiveTab(nextTab);
+    trackNavigation(nextTab === "results" ? "results_tab" : "targets_tab");
   };
 
   const getAgencyColor = (code: string) => {
@@ -178,7 +198,11 @@ export default function DeviceEmulator({
           <>
             {/* Action Trigger Button */}
             <button
-              onClick={() => onStartScrape(networkType)}
+              onClick={() => {
+                trackButtonClick("start_scrape", "수집 엔진 가동");
+                trackEvent("scrape_started", { network_type: networkType });
+                onStartScrape(networkType);
+              }}
               disabled={isLoading}
               className={`w-full py-3.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer ${
                 isLoading 
@@ -359,7 +383,15 @@ export default function DeviceEmulator({
                   <Building className="w-3 h-3 text-blue-500 dark:text-blue-400 shrink-0" />
                   <span className="text-blue-800 dark:text-blue-200 truncate max-w-[100px]">{agency.agency}</span>
                   <button
+<<<<<<< HEAD
                     onClick={() => setAgencyToDelete({ code: agency.code, name: agency.agency, isDefault: false })}
+=======
+                    onClick={() => {
+                      trackButtonClick("remove_custom_agency_chip", agency.agency);
+                      trackEvent("agency_remove_clicked", { agency_code: agency.code });
+                      onRemoveAgency(agency.code);
+                    }}
+>>>>>>> 0d10c69 (firebase + flutter setting.)
                     className="p-0.5 text-slate-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-colors cursor-pointer shrink-0"
                     title="추가 수집 대상 삭제"
                   >
@@ -381,7 +413,10 @@ export default function DeviceEmulator({
                   type="text"
                   placeholder="예: 계양보건소"
                   value={phoneName}
-                  onChange={(e) => setPhoneName(e.target.value)}
+                  onChange={(e) => {
+                    setPhoneName(e.target.value);
+                    trackInputInteraction("agency_name", e.target.value.length);
+                  }}
                   className="w-full px-2.5 py-1.5 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500 dark:text-white"
                 />
               </div>
@@ -392,7 +427,10 @@ export default function DeviceEmulator({
                   type="text"
                   placeholder="예: https://..."
                   value={phoneUrl}
-                  onChange={(e) => setPhoneUrl(e.target.value)}
+                  onChange={(e) => {
+                    setPhoneUrl(e.target.value);
+                    trackInputInteraction("agency_url", e.target.value.length);
+                  }}
                   className="w-full px-2.5 py-1.5 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md focus:outline-hidden focus:ring-1 focus:ring-blue-500 dark:text-white"
                 />
               </div>
@@ -420,7 +458,7 @@ export default function DeviceEmulator({
       {/* App Bottom Tab Bar (Material 3 Navigation Bar) */}
       <div className="h-14 bg-white dark:bg-slate-850 border-t border-slate-200 dark:border-slate-800 flex items-center justify-around text-slate-500 z-10">
         <button
-          onClick={() => setActiveTab("results")}
+          onClick={() => handleTabChange("results")}
           className={`flex-1 py-1 flex flex-col items-center justify-center gap-0.5 transition-colors cursor-pointer ${
             activeTab === "results"
               ? "text-blue-600 dark:text-blue-400 font-extrabold"
@@ -431,7 +469,7 @@ export default function DeviceEmulator({
           <span className="text-[9px]">수집 현황</span>
         </button>
         <button
-          onClick={() => setActiveTab("targets")}
+          onClick={() => handleTabChange("targets")}
           className={`flex-1 py-1 flex flex-col items-center justify-center gap-0.5 transition-colors cursor-pointer ${
             activeTab === "targets"
               ? "text-blue-600 dark:text-blue-400 font-extrabold"

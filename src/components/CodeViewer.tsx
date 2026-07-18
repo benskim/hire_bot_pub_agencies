@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Copy, Check, Download, Code, Layers, Share2, BookOpen, Cpu } from "lucide-react";
+import { trackButtonClick, trackEvent } from "../lib/firebaseAnalytics";
 import { dartCodeChunks } from "../data/dartCode";
 
 interface CodeViewerProps {
@@ -20,12 +21,20 @@ export default function CodeViewer({ onDownloadDart }: CodeViewerProps) {
 
   const handleCopyCode = async () => {
     try {
+      trackButtonClick("copy_code", "Copy Code");
+      trackEvent("code_copied", { tab_id: activeTab });
       await navigator.clipboard.writeText(dartCodeChunks[activeTab]);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error("Failed to copy!", err);
     }
+  };
+
+  const handleTabChange = (tabId: keyof typeof dartCodeChunks) => {
+    setActiveTab(tabId);
+    setCopied(false);
+    trackEvent("code_tab_changed", { tab_id: tabId });
   };
 
   // Ultra-simple syntax-highlight simulator for Dart code
@@ -130,7 +139,11 @@ export default function CodeViewer({ onDownloadDart }: CodeViewerProps) {
               )}
             </button>
             <button
-              onClick={onDownloadDart}
+              onClick={() => {
+                trackButtonClick("download_dart", "Download main.dart");
+                trackEvent("code_downloaded", { tab_id: activeTab });
+                onDownloadDart();
+              }}
               className="py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow"
             >
               <Download className="w-3.5 h-3.5" />

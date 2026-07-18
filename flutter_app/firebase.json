@@ -1,0 +1,1 @@
+{"firestore":{"database":"(default)","location":"asia-northeast3","rules":"firestore.rules","indexes":"firestore.indexes.json"},"flutter":{"platforms":{"dart":{"lib/firebase_options.dart":{"projectId":"hire-noti","configurations":{"web":"1:853343008574:web:74e9b2f846786314cade6f"}}}}}}

@@ -42,6 +42,20 @@ let app;
 let analytics: Analytics | null = null;
 let db: Firestore | null = null;
 
+// 2. 안전한 초기화 (중복 초기화 방지)
+if (typeof window !== "undefined") {
+  // 이미 앱이 초기화되어 있다면 기존 앱을 쓰고, 없으면 새로 초기화합니다.
+  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+  
+  // 브라우저 환경에서만 Analytics와 Firestore를 켭니다.
+  analytics = getAnalytics(app);
+  db = getFirestore(app);
+}
+
+// 3. 다른 파일에서 쓸 수 있도록 내보내기
+export { app, analytics, db };
+
+
 // Check if the configuration is using the default template values
 const isPlaceholder = (val: string) => !val || val.includes("YOUR_FIREBASE_") || val.startsWith("YOUR_");
 const isFirebaseConfigured = 
@@ -85,7 +99,39 @@ export function trackEvent(eventName: string, params?: Record<string, any>) {
 }
 
 /**
- * 2. 특정 버튼 클릭 이벤트 로깅
+ * 2. 범용 UI 액션 로깅
+ */
+export function trackUIAction(action: string, details?: Record<string, any>) {
+  trackEvent("ui_action", {
+    action,
+    ...details,
+  });
+}
+
+export function trackFormSubmission(formName: string, details?: Record<string, any>) {
+  trackEvent("form_submit", {
+    form_name: formName,
+    ...details,
+  });
+}
+
+export function trackInputInteraction(fieldName: string, valueLength: number, details?: Record<string, any>) {
+  trackEvent("input_interaction", {
+    field_name: fieldName,
+    value_length: valueLength,
+    ...details,
+  });
+}
+
+export function trackNavigation(section: string, details?: Record<string, any>) {
+  trackEvent("navigation", {
+    section,
+    ...details,
+  });
+}
+
+/**
+ * 3. 특정 버튼 클릭 이벤트 로깅
  */
 export function trackButtonClick(buttonId: string, label: string) {
   trackEvent("button_click", {
