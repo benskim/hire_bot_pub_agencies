@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 // main.dart 파일 맨 위에 아래 두 줄을 꼭 임포트(Import) 해주세요!
 import 'package:firebase_core/firebase_core.dart'; // Firebase 코어 패키지
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'firebase_options.dart'; // 아까 flutterfire configure로 자동 생성된 파일
 import 'scraper.dart';
 
@@ -19,6 +20,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await FirebaseAnalytics.instance.logAppOpen();
 
   // 이 아래는 기존에 사용하시던 원래 구조를 그대로 두시면 됩니다.
   runApp(const ScraperApp());
@@ -54,6 +56,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
   final List<Map<String, String>> targetAgencies = [
     {
       "code": "GY_OFFICE",
@@ -122,6 +125,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, String> _crawlingLogs = {};
 
   Future<void> _executeScraping() async {
+    await _analytics.logEvent(
+      name: 'click_start_scraping',
+      parameters: {
+        'target_agency_count': targetAgencies.length,
+      },
+    );
     setState(() {
       _isLoading = true;
       _listings.clear();
@@ -146,6 +155,13 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoading = false;
       });
 
+      await _analytics.logEvent(
+        name: 'scraping_completed',
+        parameters: {
+          'result_count': results.length,
+        },
+      );
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -155,6 +171,12 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
     } catch (e) {
+      await _analytics.logEvent(
+        name: 'scraping_failed',
+        parameters: {
+          'error': e.toString(),
+        },
+      );
       setState(() {
         _isLoading = false;
       });
@@ -327,7 +349,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ),
                                 trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-                                onTap: () {
+                                onTap: () async {
+                                  await _analytics.logEvent(
+                                    name: 'click_job_posting',
+                                    parameters: {
+                                      'agency_code': job.agencyCode,
+                                      'agency_name': job.agencyName,
+                                    },
+                                  );
                                   // In a real mobile app, open the link in a WebView or browser
                                   debugPrint("Opening URL: ${job.url}");
                                   ScaffoldMessenger.of(context).showSnackBar(
