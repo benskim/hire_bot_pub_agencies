@@ -29,13 +29,13 @@ import { getFirestore, collection, addDoc, Firestore } from "firebase/firestore"
 // .env 환경변수를 사용하여 주입할 수 있습니다. (Vite 환경 변수 사용 권장)
 // =========================================================================
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDTujOvdssK4GJEu67c5psMX-uyMeenL-U",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "hire-noti.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "hire-noti",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "hire-noti.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "853343008574",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:853343008574:web:74e9b2f846786314cade6f",
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-SK96SK9J47"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 let app;
@@ -43,11 +43,15 @@ let analytics: Analytics | null = null;
 let db: Firestore | null = null;
 
 // Check if the configuration is using the default template values
-const isPlaceholder = (val: string) => !val || val.includes("YOUR_FIREBASE_") || val.startsWith("YOUR_");
+const isPlaceholder = (val: string | undefined) => !val || val.includes("YOUR_FIREBASE_") || val.startsWith("YOUR_");
 const isFirebaseConfigured = 
   !isPlaceholder(firebaseConfig.apiKey) && 
+  !isPlaceholder(firebaseConfig.authDomain) &&
   !isPlaceholder(firebaseConfig.projectId) && 
-  !isPlaceholder(firebaseConfig.appId);
+  !isPlaceholder(firebaseConfig.storageBucket) &&
+  !isPlaceholder(firebaseConfig.messagingSenderId) &&
+  !isPlaceholder(firebaseConfig.appId) &&
+  !isPlaceholder(firebaseConfig.measurementId);
 
 // Firebase 초기화 진행
 if (isFirebaseConfigured) {
@@ -65,7 +69,7 @@ if (isFirebaseConfigured) {
     console.error("⚠️ Firebase initialization failed:", error);
   }
 } else {
-  console.log("ℹ️ Firebase is running in simulation/dev mode because default placeholder credentials are used. Event tracking and simulated Crashlytics logs will be outputted to the developer console.");
+  console.log("ℹ️ Firebase is running in simulation/dev mode because Vite Firebase environment variables are missing. Event tracking and simulated Crashlytics logs will be outputted to the developer console.");
 }
 
 // 3. 다른 파일에서 쓸 수 있도록 내보내기
