@@ -43,7 +43,9 @@ interface DeviceEmulatorProps {
   customAgencies: CustomAgency[];
   defaultAgencies: Array<{ code: string; agency: string; url: string }>;
   onAddAgency: (name: string, url: string) => string | null;
-  onRemoveAgency: (code: string) => void;
+  onRemoveAgency: (code: string, isDefault: boolean) => void;
+  onRestoreDefaultAgencies: () => void;
+  hasDeletedDefaults: boolean;
 }
 
 export default function DeviceEmulator({
@@ -55,11 +57,33 @@ export default function DeviceEmulator({
   customAgencies,
   defaultAgencies,
   onAddAgency,
-  onRemoveAgency
+  onRemoveAgency,
+  onRestoreDefaultAgencies,
+  hasDeletedDefaults
 }: DeviceEmulatorProps) {
   const [networkType, setNetworkType] = useState<string>("KT_5G");
   const [currentTime, setCurrentTime] = useState<string>("19:49");
   const [activeTab, setActiveTab] = useState<"results" | "targets">("results");
+  const [filterInstructor, setFilterInstructor] = useState<boolean>(false);
+  const [filterTodayOnly, setFilterTodayOnly] = useState<boolean>(false);
+  const [agencyToDelete, setAgencyToDelete] = useState<{ code: string; name: string; isDefault: boolean } | null>(null);
+
+  const todayKst = (() => {
+    const localTime = new Date();
+    const utcTime = localTime.getTime() + (localTime.getTimezoneOffset() * 60000);
+    const kstTime = utcTime + (9 * 60 * 60 * 1000);
+    const kstDate = new Date(kstTime);
+    const year = kstDate.getFullYear();
+    const month = String(kstDate.getMonth() + 1).padStart(2, "0");
+    const day = String(kstDate.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  })();
+
+  const displayedListings = listings.filter(p => {
+    if (filterInstructor && !p.title.includes("강사")) return false;
+    if (filterTodayOnly && p.createdAt !== todayKst) return false;
+    return true;
+  });
 
   // Phone Add form states
   const [phoneName, setPhoneName] = useState("");
@@ -134,7 +158,7 @@ export default function DeviceEmulator({
   };
 
   return (
-    <div className="w-full bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden min-h-[600px]">
+    <div className="w-full bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden min-h-[600px] relative">
       {/* Material 3 App Bar */}
       <div className="h-16 bg-blue-700 text-white flex items-center justify-between px-5 shadow-md z-10">
         <div className="flex items-center gap-2">
@@ -179,8 +203,34 @@ export default function DeviceEmulator({
             <div className="flex-1 flex flex-col">
               <div className="flex justify-between items-center mb-2.5">
                 <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  수집된 채용 목록 ({listings.length})
+                  수집된 채용 목록 ({displayedListings.length})
                 </span>
+                {listings.length > 0 && (
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => setFilterTodayOnly(!filterTodayOnly)}
+                      className={`px-1.5 py-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-1 ${
+                        filterTodayOnly
+                          ? "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800"
+                          : "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${filterTodayOnly ? 'bg-amber-600 dark:bg-amber-400' : 'bg-slate-400'}`}></span>
+                      오늘 등록
+                    </button>
+                    <button
+                      onClick={() => setFilterInstructor(!filterInstructor)}
+                      className={`px-1.5 py-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-1 ${
+                        filterInstructor
+                          ? "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800"
+                          : "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${filterInstructor ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400'}`}></span>
+                      '강사' 공고
+                    </button>
+                  </div>
+                )}
               </div>
 
               {isLoading ? (
@@ -203,12 +253,22 @@ export default function DeviceEmulator({
                     공고없음
                   </span>
                   <span className="text-[10px] text-slate-400 dark:text-slate-500 text-center mt-1 leading-normal">
-                    수집 버튼을 눌러 최근 2일치 등록된 공고를 수집하세요.
+                    수집 버튼을 눌러 최근 3일치 등록된 공고를 수집하세요.
+                  </span>
+                </div>
+              ) : displayedListings.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center py-12 bg-white dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-400 px-4">
+                  <AlertCircle className="w-8 h-8 mb-2 text-amber-500" />
+                  <span className="text-sm font-black text-slate-700 dark:text-slate-300 text-center tracking-tight">
+                    필터링된 결과 없음
+                  </span>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 text-center mt-1 leading-normal">
+                    활성화된 필터 조건에 맞는 공고가 없습니다. 필터를 변경해 보세요.
                   </span>
                 </div>
               ) : (
                 <div className="space-y-2 flex-1 pb-4">
-                  {listings.map((posting) => {
+                  {displayedListings.map((posting) => {
                     const color = getAgencyColor(posting.agencyCode);
                     return (
                       <div
@@ -252,9 +312,19 @@ export default function DeviceEmulator({
         ) : (
           // TAB 2: 수집 대상 관리 (TARGETS / 추가수집)
           <div className="flex-1 flex flex-col gap-3 text-left animate-fadeIn">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200">
-              <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <span>수집 대상 사이트 ({defaultAgencies.length + customAgencies.length}개)</span>
+            <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-200">
+              <div className="flex items-center gap-1.5">
+                <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span>수집 대상 사이트 ({defaultAgencies.length + customAgencies.length}개)</span>
+              </div>
+              {hasDeletedDefaults && (
+                <button
+                  onClick={onRestoreDefaultAgencies}
+                  className="px-1.5 py-0.5 text-[9px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 rounded border border-blue-200 dark:border-blue-800 hover:bg-blue-100 transition-colors cursor-pointer"
+                >
+                  기본 대상 전체 복원
+                </button>
+              )}
             </div>
 
             {/* Target Site Lists on Phone */}
@@ -263,12 +333,19 @@ export default function DeviceEmulator({
               {defaultAgencies.map((agency) => (
                 <div 
                   key={agency.code}
-                  className="bg-white dark:bg-slate-850 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-850 flex items-center gap-1 text-[11px] font-bold shadow-xs hover:border-blue-400 hover:dark:border-blue-600 transition-all shrink-0"
+                  className="bg-white dark:bg-slate-850 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-850 flex items-center gap-1.5 text-[11px] font-bold shadow-xs hover:border-blue-400 hover:dark:border-blue-600 transition-all shrink-0"
                   title={`${agency.agency} (${agency.code})`}
                 >
                   <Building className="w-3 h-3 text-blue-600 dark:text-blue-400 shrink-0" />
-                  <span className="text-slate-800 dark:text-slate-200 truncate max-w-[110px]">{agency.agency}</span>
+                  <span className="text-slate-800 dark:text-slate-200 truncate max-w-[90px]">{agency.agency}</span>
                   <span className="text-[8px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1 rounded scale-90">기본</span>
+                  <button
+                    onClick={() => setAgencyToDelete({ code: agency.code, name: agency.agency, isDefault: true })}
+                    className="p-0.5 text-slate-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-colors cursor-pointer shrink-0"
+                    title="기본 수집 대상 삭제"
+                  >
+                    <Trash2 className="w-2.5 h-2.5" />
+                  </button>
                 </div>
               ))}
 
@@ -276,15 +353,15 @@ export default function DeviceEmulator({
               {customAgencies.map((agency) => (
                 <div 
                   key={agency.code}
-                  className="bg-blue-50/60 dark:bg-blue-950/20 px-2 py-1 rounded-lg border border-blue-200 dark:border-blue-900/50 flex items-center gap-1 text-[11px] font-bold shadow-xs hover:border-blue-400 hover:dark:border-blue-600 transition-all shrink-0"
+                  className="bg-blue-50/60 dark:bg-blue-950/20 px-2 py-1 rounded-lg border border-blue-200 dark:border-blue-900/50 flex items-center gap-1.5 text-[11px] font-bold shadow-xs hover:border-blue-400 hover:dark:border-blue-600 transition-all shrink-0"
                   title={`${agency.agency} (${agency.code})`}
                 >
                   <Building className="w-3 h-3 text-blue-500 dark:text-blue-400 shrink-0" />
-                  <span className="text-blue-800 dark:text-blue-200 truncate max-w-[110px]">{agency.agency}</span>
+                  <span className="text-blue-800 dark:text-blue-200 truncate max-w-[100px]">{agency.agency}</span>
                   <button
-                    onClick={() => onRemoveAgency(agency.code)}
+                    onClick={() => setAgencyToDelete({ code: agency.code, name: agency.agency, isDefault: false })}
                     className="p-0.5 text-slate-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-colors cursor-pointer shrink-0"
-                    title="삭제"
+                    title="추가 수집 대상 삭제"
                   >
                     <Trash2 className="w-2.5 h-2.5" />
                   </button>
@@ -365,6 +442,39 @@ export default function DeviceEmulator({
           <span className="text-[9px]">추가 수집</span>
         </button>
       </div>
+
+      {agencyToDelete && (
+        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-2xl max-w-[270px] w-full text-center">
+            <div className="w-12 h-12 bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 tracking-tight leading-snug">
+              수집 대상 사이트 삭제
+            </h3>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+              정말 <span className="font-extrabold text-slate-800 dark:text-white">'{agencyToDelete.name}'</span> 사이트를 수집 대상에서 삭제할까요?
+            </p>
+            <div className="flex gap-2.5 mt-5">
+              <button
+                onClick={() => setAgencyToDelete(null)}
+                className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-bold rounded-lg transition-colors cursor-pointer"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => {
+                  onRemoveAgency(agencyToDelete.code, agencyToDelete.isDefault);
+                  setAgencyToDelete(null);
+                }}
+                className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white text-[11px] font-bold rounded-lg transition-colors cursor-pointer shadow-xs"
+              >
+                삭제하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

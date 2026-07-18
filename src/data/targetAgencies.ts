@@ -43,6 +43,90 @@ export const TARGET_AGENCIES: AgencyConfig[] = [
     baseUrl: "https://www.insiseol.or.kr"
   },
   {
+    code: "IC_SILVER",
+    agency: "노인종합문화회관",
+    type: "SPRING",
+    url: "http://insiseol.or.kr/culture/silver/board/job.jsp",
+    baseUrl: "http://insiseol.or.kr"
+  },
+  {
+    code: "IC_YOUTH_1",
+    agency: "청소년수련관",
+    type: "SPRING",
+    url: "https://www.insiseol.or.kr/culture/youth/notice/job.jsp",
+    baseUrl: "https://www.insiseol.or.kr"
+  },
+  {
+    code: "IC_YOUTH_2",
+    agency: "청소년수련관",
+    type: "SPRING",
+    url: "https://www.insiseol.or.kr/culture/youth/notice/job2.jsp",
+    baseUrl: "https://www.insiseol.or.kr"
+  },
+  {
+    code: "IC_SKY",
+    agency: "하늘문화센터",
+    type: "SPRING",
+    url: "https://www.insiseol.or.kr/culture/sky/notice/recruit.jsp",
+    baseUrl: "https://www.insiseol.or.kr"
+  },
+  {
+    code: "IC_SKY_2",
+    agency: "하늘문화센터",
+    type: "SPRING",
+    url: "https://www.insiseol.or.kr/culture/sky/notice/job.jsp",
+    baseUrl: "https://www.insiseol.or.kr"
+  },
+  {
+    code: "IC_GAJWA",
+    agency: "가좌근로자문화센터",
+    type: "SPRING",
+    url: "https://www.insiseol.or.kr/culture/gajwa/data/fixedterm.jsp",
+    baseUrl: "https://www.insiseol.or.kr"
+  },
+  {
+    code: "IC_GYESAN",
+    agency: "계산체육센터",
+    type: "SPRING",
+    url: "https://www.insiseol.or.kr/sport/gyesan/notice/job.jsp",
+    baseUrl: "https://www.insiseol.or.kr"
+  },
+  {
+    code: "IC_SAMSAN",
+    agency: "삼산체육관",
+    type: "SPRING",
+    url: "https://www.insiseol.or.kr/sport/samsan/notice/job.jsp",
+    baseUrl: "https://www.insiseol.or.kr"
+  },
+  {
+    code: "IC_SONGNIM",
+    agency: "송림체육관",
+    type: "SPRING",
+    url: "https://www.insiseol.or.kr/sport/songnim/notice/job.jsp",
+    baseUrl: "https://www.insiseol.or.kr"
+  },
+  {
+    code: "IC_ASIAD",
+    agency: "아시아드경기장",
+    type: "SPRING",
+    url: "https://www.insiseol.or.kr/sport/asiad/notice/job.jsp",
+    baseUrl: "https://www.insiseol.or.kr"
+  },
+  {
+    code: "IC_ASIAD_2",
+    agency: "아시아드경기장",
+    type: "SPRING",
+    url: "https://www.insiseol.or.kr/sport/asiad/notice/recruit.jsp",
+    baseUrl: "https://www.insiseol.or.kr"
+  },
+  {
+    code: "IC_GYEYANG",
+    agency: "계양경기장",
+    type: "SPRING",
+    url: "https://www.insiseol.or.kr/sport/gyeyang/notice/job.jsp",
+    baseUrl: "https://www.insiseol.or.kr"
+  },
+  {
     code: "GY_SISEOL",
     agency: "계양구 시설관리공단",
     type: "GNUBOARD",

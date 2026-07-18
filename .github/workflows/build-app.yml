@@ -1,0 +1,103 @@
+name: Build Flutter Apps
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch: # Allows manual trigger from GitHub Actions UI
+
+jobs:
+  build_android:
+    name: Build Android APK & AppBundle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Initialize Native App Wrappers
+        run: |
+          cd flutter_app
+          flutter create --org com.edge.scraper --project-name edge_scraper .
+
+      - name: Get dependencies
+        run: |
+          cd flutter_app
+          flutter pub get
+
+      - name: Build Android APK (For direct download & install)
+        run: |
+          cd flutter_app
+          flutter build apk --release
+
+      - name: Build Android App Bundle (For Google Play if needed)
+        run: |
+          cd flutter_app
+          flutter build appbundle --release
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-apk
+          path: flutter_app/build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Upload Android App Bundle (AAB)
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-aab
+          path: flutter_app/build/app/outputs/bundle/release/app-release.aab
+
+  build_ios:
+    name: Build iOS IPA (No-Codesign)
+    runs-on: macos-14 # macOS runner required for iOS compiling
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Initialize Native App Wrappers
+        run: |
+          cd flutter_app
+          flutter create --org com.edge.scraper --project-name edge_scraper .
+
+      - name: Get dependencies
+        run: |
+          cd flutter_app
+          flutter pub get
+
+      - name: Build iOS App Bundle (No Codesign)
+        run: |
+          cd flutter_app
+          flutter build ios --release --no-codesign
+
+      - name: Package iOS App to Zip (For direct download & sideload)
+        run: |
+          cd flutter_app/build/ios/iphoneos
+          zip -r Runner.app.zip Runner.app
+
+      - name: Upload iOS App Bundle Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-release-no-codesign
+          path: flutter_app/build/ios/iphoneos/Runner.app.zip

@@ -60,10 +60,25 @@ export default function App() {
     }
   });
 
+  // Load deleted default agencies from localStorage
+  const [deletedDefaultCodes, setDeletedDefaultCodes] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("deleted_default_codes");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
   // Save custom agencies to localStorage
   useEffect(() => {
     localStorage.setItem("custom_scrape_agencies", JSON.stringify(customAgencies));
   }, [customAgencies]);
+
+  // Save deleted default agencies to localStorage
+  useEffect(() => {
+    localStorage.setItem("deleted_default_codes", JSON.stringify(deletedDefaultCodes));
+  }, [deletedDefaultCodes]);
 
   const addAgencyDirect = (name: string, url: string): string | null => {
     const trimmedName = name.trim();
@@ -104,16 +119,38 @@ export default function App() {
     return null;
   };
 
-  const handleRemoveAgency = (code: string) => {
-    const agencyToRemove = customAgencies.find(a => a.code === code);
-    if (agencyToRemove) {
-      saveDeletedAgencyToFirebase(agencyToRemove.agency, agencyToRemove.url);
+  const handleRemoveAgency = (code: string, isDefault: boolean) => {
+    if (isDefault) {
+      const agencyToRemove = DEFAULT_AGENCIES.find(a => a.code === code);
+      if (agencyToRemove) {
+        saveDeletedAgencyToFirebase(agencyToRemove.agency, agencyToRemove.url);
+        setDeletedDefaultCodes(prev => [...prev, code]);
+        trackButtonClick("remove_default_agency", code);
+        setLogs(prev => [
+          ...prev,
+          { agencyCode: "SYSTEM", message: `Removed default target site: ${agencyToRemove.agency}`, timestamp: getTimestamp() }
+        ]);
+      }
+    } else {
+      const agencyToRemove = customAgencies.find(a => a.code === code);
+      if (agencyToRemove) {
+        saveDeletedAgencyToFirebase(agencyToRemove.agency, agencyToRemove.url);
+      }
+      setCustomAgencies(prev => prev.filter(a => a.code !== code));
+      trackButtonClick("remove_custom_agency", code);
+      setLogs(prev => [
+        ...prev,
+        { agencyCode: "SYSTEM", message: `Removed custom target site: ${code}`, timestamp: getTimestamp() }
+      ]);
     }
-    setCustomAgencies(prev => prev.filter(a => a.code !== code));
-    trackButtonClick("remove_custom_agency", code);
+  };
+
+  const handleRestoreDefaultAgencies = () => {
+    setDeletedDefaultCodes([]);
+    trackButtonClick("restore_default_agencies", "all");
     setLogs(prev => [
       ...prev,
-      { agencyCode: "SYSTEM", message: `Removed target site: ${code}`, timestamp: getTimestamp() }
+      { agencyCode: "SYSTEM", message: "Restored all deleted default target sites", timestamp: getTimestamp() }
     ]);
   };
 
@@ -141,7 +178,7 @@ export default function App() {
     const clientDate = getKSTDateString();
     const d1 = new Date(clientDate);
     const d2 = new Date(d1);
-    d2.setDate(d2.getDate() - 1);
+    d2.setDate(d2.getDate() - 2);
     const formatDate = (d: Date) => {
       const year = d.getFullYear();
       const month = String(d.getMonth() + 1).padStart(2, "0");
@@ -150,7 +187,8 @@ export default function App() {
     };
     const targetRangeStr = `${formatDate(d2)} ~ ${clientDate}`;
 
-    const activeAgencies = [...DEFAULT_AGENCIES, ...customAgencies];
+    const activeDefaultAgencies = DEFAULT_AGENCIES.filter(a => !deletedDefaultCodes.includes(a.code));
+    const activeAgencies = [...activeDefaultAgencies, ...customAgencies];
 
     // Initial Logs Sequence (creates a highly immersive simulated terminal output)
     const initialLogs: LogEntry[] = [
@@ -191,7 +229,11 @@ export default function App() {
       const res = await fetch("/api/scrape", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientDate, customAgencies })
+        body: JSON.stringify({ 
+          clientDate, 
+          customAgencies,
+          activeDefaultCodes: activeDefaultAgencies.map(a => a.code)
+        })
       });
 
       if (!res.ok) {
@@ -261,9 +303,11 @@ export default function App() {
           logs={logs}
           scrapeSummary={scrapeSummary}
           customAgencies={customAgencies}
-          defaultAgencies={DEFAULT_AGENCIES}
+          defaultAgencies={DEFAULT_AGENCIES.filter(a => !deletedDefaultCodes.includes(a.code))}
           onAddAgency={addAgencyDirect}
           onRemoveAgency={handleRemoveAgency}
+          onRestoreDefaultAgencies={handleRestoreDefaultAgencies}
+          hasDeletedDefaults={deletedDefaultCodes.length > 0}
         />
       </div>
     </div>
