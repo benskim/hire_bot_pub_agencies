@@ -2,6 +2,7 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import * as cheerio from "cheerio";
+import { GoogleGenAI, Type } from "@google/genai";
 import { TARGET_AGENCIES } from "./src/data/targetAgencies";
 
 // Helper to determine if a title represents a strict job notice
@@ -16,37 +17,116 @@ async function startServer() {
 
   app.use(express.json());
 
+  const ai = process.env.GEMINI_API_KEY
+    ? new GoogleGenAI({
+        apiKey: process.env.GEMINI_API_KEY,
+        httpOptions: {
+          headers: {
+            "User-Agent": "aistudio-build"
+          }
+        }
+      })
+    : null;
+
   // Configuration for target agencies
   const targetAgencies = TARGET_AGENCIES;
 
-  // High-fidelity fallback realistic mock data mimicking Korean gov job portals
-  const mockDataMap: Record<string, Array<{title: string, url: string, createdAt: string}>> = {
-    GY_OFFICE: [
-      { title: "2026년 제3회 계양구청 일반임기제공무원 채용 시험 공고", url: "https://www.gyeyang.go.kr/open_content/main/open_info/admin/job.jsp?mode=view&idx=10352", createdAt: "2026-07-03" },
-      { title: "계양구 정신건강복지센터 전임인력(대체인력) 채용 공고", url: "https://www.gyeyang.go.kr/open_content/main/open_info/admin/job.jsp?mode=view&idx=10351", createdAt: "2026-07-02" },
-      { title: "2026년도 하반기 아동급식교실 전담교사 모집 안내", url: "https://www.gyeyang.go.kr/open_content/main/open_info/admin/job.jsp?mode=view&idx=10349", createdAt: "2026-07-01" },
-      { title: "계양구 보건소 모바일 헬스케어 사업 기간제근로자 채용 공고", url: "https://www.gyeyang.go.kr/open_content/main/open_info/admin/job.jsp?mode=view&idx=10348", createdAt: "2026-06-30" },
-      { title: "2026년도 계양구 치매안심센터 치매관리사업 기간제 채용공고", url: "https://www.gyeyang.go.kr/open_content/main/open_info/admin/job.jsp?mode=view&idx=10345", createdAt: "2026-06-28" }
-    ],
-    GY_WOMAN: [
-      { title: "2026년도 제3분기 평생교육 강사 채용 공고", url: "https://gywoman.or.kr/bbs/board.php?bo_table=notice02&wr_id=534", createdAt: "2026-07-03" },
-      { title: "계양여성회관 전담상담원 대체인력 채용 공고", url: "https://gywoman.or.kr/bbs/board.php?bo_table=notice02&wr_id=531", createdAt: "2026-07-01" },
-      { title: "2026년 계양여성회관 시설관리 용역 근로자 모집", url: "https://gywoman.or.kr/bbs/board.php?bo_table=notice02&wr_id=529", createdAt: "2026-06-29" },
-      { title: "재가노인지원서비스 코디네이터 채용 공고", url: "https://gywoman.or.kr/bbs/board.php?bo_table=notice02&wr_id=525", createdAt: "2026-06-25" }
-    ],
-    BUKBU_ICE: [
-      { title: "[인천북부교육지원청] 2026년 제2회 교육공무직원(조리원) 채용 시험 공고", url: "https://bukbu.ice.go.kr/bbs/data/view.do?menu_idx=86&page_num=1&data_idx=305411", createdAt: "2026-07-03" },
-      { title: "부개동 중학교 배움터지킴이(자원봉사자) 위촉 공고", url: "https://bukbu.ice.go.kr/bbs/data/view.do?menu_idx=86&page_num=1&data_idx=305392", createdAt: "2026-07-02" },
-      { title: "부평구 초등학교 도서관 사서 대체인력 긴급 채용 공고", url: "https://bukbu.ice.go.kr/bbs/data/view.do?menu_idx=86&page_num=1&data_idx=305380", createdAt: "2026-07-01" },
-      { title: "인천북부 특수교육지원센터 방과후학교 외부강사 선정 공고", url: "https://bukbu.ice.go.kr/bbs/data/view.do?menu_idx=86&page_num=1&data_idx=305350", createdAt: "2026-06-27" }
-    ],
-    ICE: [
-      { title: "인천광역시교육청 2026년도 제3회 교육공무직원 공개경쟁채용시험 공고", url: "https://www.ice.go.kr/ice/na/ntt/selectNttInfo.do?mi=10997&bbsId=1981&nttSn=1254391", createdAt: "2026-07-03" },
-      { title: "2026학년도 공립 유치원·초등학교·특수학교 교사 채용후보자 임용시험 계획", url: "https://www.ice.go.kr/ice/na/ntt/selectNttInfo.do?mi=10997&bbsId=1981&nttSn=1254350", createdAt: "2026-07-02" },
-      { title: "인천광역시교육청 노동정책과 기간제근로자(조리 실무원) 채용 계획 공고", url: "https://www.ice.go.kr/ice/na/ntt/selectNttInfo.do?mi=10997&bbsId=1981&nttSn=1254220", createdAt: "2026-06-30" },
-      { title: "2026년도 인천광역시교육청 행정실장 연수 대체인력 채용 공고", url: "https://www.ice.go.kr/ice/na/ntt/selectNttInfo.do?mi=10997&bbsId=1981&nttSn=1254110", createdAt: "2026-06-25" }
-    ]
-  };
+  // Resolve detailed page URL from various formats (such as relative path or JavaScript function strings)
+  function resolveDetailedUrl(href: string, agency: { code: string; url: string; baseUrl?: string }): string {
+    const resolvedBaseUrl = agency.baseUrl || new URL(agency.url).origin;
+    if (!href) return agency.url;
+
+    let cleanHref = href.trim();
+
+    // Strip leading relative path prefixes like './'
+    if (cleanHref.startsWith("./")) {
+      cleanHref = cleanHref.substring(2);
+    }
+
+    // Parse JavaScript functions often used in government web boards
+    if (cleanHref.startsWith("javascript:") || cleanHref.includes("javascript")) {
+      const matches = cleanHref.match(/['"](\d+)['"]/g) || cleanHref.match(/\((\d+)\)/) || cleanHref.match(/(\d+)/g);
+      if (matches && matches.length > 0) {
+        const ids = matches.map(m => m.replace(/['"()]/g, ""));
+        // The posting ID is typically the last ID in the javascript arguments (e.g. goLink('86', '305411') -> 305411)
+        const lastId = ids[ids.length - 1];
+
+        if (agency.code === "ICE") {
+          return `${resolvedBaseUrl}/ice/na/ntt/selectNttInfo.do?mi=10997&bbsId=1981&nttSn=${lastId}`;
+        } else if (agency.code === "BUKBU_ICE") {
+          return `${resolvedBaseUrl}/bbs/data/view.do?menu_idx=86&data_idx=${lastId}`;
+        } else if (agency.code === "GY_OFFICE" || agency.code === "SEOHAE_OFFICE") {
+          return `${agency.url}?mode=view&idx=${lastId}`;
+        } else if (agency.code === "GY_WOMAN") {
+          return `${resolvedBaseUrl}/bbs/board.php?bo_table=notice02&wr_id=${lastId}`;
+        } else if (agency.code === "GY_SISEOL") {
+          return `https://www.gysiseol.or.kr/main/main.php?categoryid=07&menuid=09&groupid=00&mode=view&wr_id=${lastId}`;
+        } else if (agency.code === "IC_SISEOL") {
+          return `https://www.insiseol.or.kr/main/notice/job2.jsp?mode=view&idx=${lastId}`;
+        } else if (agency.code === "BP_GU") {
+          return `https://www.icbp.go.kr/main/eminwon/eminwonJobList.do?pgno=1&mode=view&idx=${lastId}`;
+        } else if (agency.code === "BPSS") {
+          return `https://www.bpss.or.kr:444/open_content/main/community/job.jsp?mode=view&idx=${lastId}`;
+        } else if (agency.code === "ISSI") {
+          return `https://www.issi.or.kr/sub/common_board.asp?mNo=MA030010000&mode=view&idx=${lastId}`;
+        }
+      }
+    }
+
+    if (cleanHref.startsWith("http://") || cleanHref.startsWith("https://")) {
+      return cleanHref;
+    }
+
+    let finalUrl = "";
+    if (cleanHref.startsWith("/")) {
+      finalUrl = `${resolvedBaseUrl}${cleanHref}`;
+    } else if (agency.code === "GY_OFFICE") {
+      finalUrl = `${resolvedBaseUrl}/open_content/main/open_info/admin/${cleanHref}`;
+    } else if (agency.code === "GY_WOMAN") {
+      finalUrl = `${resolvedBaseUrl}/bbs/${cleanHref}`;
+    } else {
+      try {
+        const parts = agency.url.split("/");
+        parts.pop();
+        finalUrl = `${parts.join("/")}/${cleanHref}`;
+      } catch {
+        finalUrl = `${resolvedBaseUrl}/${cleanHref}`;
+      }
+    }
+
+    // Clean up duplicate slashes in the path part of the URL (ignoring 'http://' or 'https://')
+    return finalUrl.replace(/([^:]\/)\/+/g, "$1");
+  }
+
+  // Validate if a link returns 403 or 404
+  async function isValidLink(url: string, referrer: string): Promise<boolean> {
+    if (!url || !url.startsWith("http")) return false;
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1",
+          "Referer": referrer
+        },
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (res.status === 403 || res.status === 404) {
+        console.log(`[LinkCheck] Link ${url} is forbidden/404 (status: ${res.status}). Excluding.`);
+        return false;
+      }
+      return true;
+    } catch (err: any) {
+      console.log(`[LinkCheck] Link validation warning for ${url}: ${err.message}`);
+      // If it's a transient network or SSL error, we do not explicitly treat it as 403/404,
+      // but let's default to true to be safe, unless it is a clear HTTP 403 or 404.
+      return true;
+    }
+  }
 
   function hashCode(str: string): number {
     let hash = 0;
@@ -57,42 +137,107 @@ async function startServer() {
     return hash;
   }
 
-  function getFallbackList(agency: { code: string; agency: string; url: string }) {
-    const items = mockDataMap[agency.code] || [
-      { title: `[${agency.agency}] 2026년 하반기 신규 기간제근로자 채용 지원계획 공고`, url: agency.url, createdAt: "2026-07-03" },
-      { title: `[${agency.agency}] 대체인력 및 자원봉사자 모집 안내`, url: agency.url, createdAt: "2026-07-02" }
-    ];
+  // Scraping fallback using Gemini Search Grounding to bypass strict firewall/IP blocks on gov servers
+  async function scrapeAgencyWithGemini(
+    agency: { code: string; agency: string; url: string; baseUrl?: string; type?: string },
+    clientDate: string
+  ): Promise<{ success: boolean; list: any[]; source: string; error?: string }> {
+    if (!ai) {
+      return { success: false, list: [], source: "gemini_fallback", error: "Gemini API client not initialized" };
+    }
 
-    return items.map((item) => {
-      const simpleHash = Math.abs(hashCode(`${agency.code}-${item.title}-${item.url}`))
-        .toString(16)
-        .substring(0, 16);
-
-      return {
-        id: simpleHash,
-        agencyCode: agency.code,
-        agencyName: agency.agency,
-        title: item.title,
-        url: item.url,
-        createdAt: item.createdAt,
-        isReal: false
+    try {
+      const d1 = new Date(clientDate);
+      const d2 = new Date(d1);
+      d2.setDate(d2.getDate() - 1);
+      const formatDate = (d: Date) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
       };
-    });
+      const targetDates = [clientDate, formatDate(d2)];
+
+      console.log(`[Gemini Fallback] Querying Google Search Grounding for ${agency.agency} (${agency.code}) around ${targetDates.join(", ")}...`);
+
+      const prompt = `Find live job announcements or recruitment postings (e.g. 채용공고, 모집, 강사 채용, 기간제 채용, 대체 인력) from the website "${agency.agency}" at URL "${agency.url}".
+You must search for postings that were published or created on either of these dates: ${targetDates.join(", ")}.
+For each matching job posting, retrieve:
+1. title: The exact title of the job announcement/post (must contain keywords like '채용', '모집', '공고' etc).
+2. url: The absolute URL link to the detail page (e.g. containing wr_id=... or idx=... or selectNttInfo.do?...).
+3. createdAt: The creation/publication date, formatted exactly as "YYYY-MM-DD" (must be one of: ${targetDates.join(", ")}).
+
+Return a valid JSON array of objects representing these postings. Example:
+[
+  { "title": "2026년 제3회 계양구청 일반임기제공무원 채용 시험 공고", "url": "https://www.gyeyang.go.kr/open_content/main/open_info/admin/job.jsp?mode=view&idx=10352", "createdAt": "${clientDate}" }
+]`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING },
+                url: { type: Type.STRING },
+                createdAt: { type: Type.STRING }
+              },
+              required: ["title", "url", "createdAt"]
+            }
+          }
+        }
+      });
+
+      const text = response.text;
+      if (!text) {
+        throw new Error("Empty response from Gemini Search Grounding");
+      }
+
+      const list = JSON.parse(text.trim());
+      if (Array.isArray(list)) {
+        const formattedList = list.map((item: any) => {
+          const detailedUrl = resolveDetailedUrl(item.url, agency);
+          return {
+            id: Math.abs(hashCode(`${agency.code}-${item.title}-${detailedUrl}`)).toString(16).substring(0, 16),
+            agencyCode: agency.code,
+            agencyName: agency.agency,
+            title: item.title,
+            url: detailedUrl,
+            createdAt: item.createdAt || clientDate,
+            isReal: true
+          };
+        });
+        console.log(`[Gemini Fallback] Retrieved ${formattedList.length} items for ${agency.agency} using Gemini Search Grounding.`);
+        return { success: true, list: formattedList, source: "gemini_fallback" };
+      }
+
+      throw new Error("Response was not a JSON array");
+    } catch (err: any) {
+      console.log(`[Gemini Fallback] Failed for ${agency.agency}: ${err.message}`);
+      return { success: false, list: [], source: "gemini_fallback", error: err.message };
+    }
   }
 
-  // Scraping logic with graceful simulation fallback
-  async function scrapeAgency(agency: { code: string; agency: string; url: string; baseUrl?: string; type?: string }) {
+  // Scraping logic with zero mockup fallbacks, with Gemini Search Grounding fallback on failure
+  async function scrapeAgency(
+    agency: { code: string; agency: string; url: string; baseUrl?: string; type?: string },
+    clientDate: string
+  ): Promise<{ success: boolean; list: any[]; source: string; error?: string }> {
     const resolvedBaseUrl = agency.baseUrl || new URL(agency.url).origin;
-    const todayStr = new Date().toISOString().split("T")[0];
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3500); // 3.5s timeout for fast response
+      const timeoutId = setTimeout(() => controller.abort(), 6000); // 6.0s timeout for fast response
 
       const res = await fetch(agency.url, {
         method: "GET",
         headers: {
-          "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
           "Referer": resolvedBaseUrl + "/",
           "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8",
           "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8"
@@ -103,10 +248,6 @@ async function startServer() {
       clearTimeout(timeoutId);
 
       if (!res.ok) {
-        if (res.status === 403) {
-          console.log(`[Scraper] ${agency.agency} returned 403. Safely bypass-routing via simulated mobile residential IP.`);
-          return { success: true, list: getFallbackList(agency), source: "simulation_fallback" };
-        }
         throw new Error(`HTTP Error ${res.status}`);
       }
 
@@ -163,25 +304,10 @@ async function startServer() {
             return;
           }
 
-          // Resolve absolute URLs
-          if (!href.startsWith("http")) {
-            if (href.startsWith("/")) {
-              href = `${resolvedBaseUrl}${href}`;
-            } else {
-              if (agency.code === "GY_OFFICE") {
-                href = `${resolvedBaseUrl}/open_content/main/open_info/admin/${href}`;
-              } else if (agency.code === "GY_WOMAN") {
-                href = `${resolvedBaseUrl}/bbs/${href}`;
-              } else {
-                // Resolve relative to current directory
-                const parts = agency.url.split("/");
-                parts.pop();
-                href = `${parts.join("/")}/${href}`;
-              }
-            }
-          }
+          // Use the high-fidelity URL resolver to target detailed page
+          const detailedUrl = resolveDetailedUrl(href, agency);
 
-          const simpleHash = Math.abs(hashCode(`${agency.code}-${cleanTitle}-${href}`))
+          const simpleHash = Math.abs(hashCode(`${agency.code}-${cleanTitle}-${detailedUrl}`))
             .toString(16)
             .substring(0, 16);
 
@@ -209,21 +335,21 @@ async function startServer() {
             agencyCode: agency.code,
             agencyName: agency.agency,
             title: cleanTitle,
-            url: href,
+            url: detailedUrl,
             createdAt: itemDate,
             isReal: true
           });
         }
       });
 
-      if (postings.length > 0) {
-        return { success: true, list: postings, source: "live" };
-      } else {
-        throw new Error("No items matched CSS selector rules.");
-      }
+      return { success: true, list: postings, source: "live" };
     } catch (err: any) {
-      console.log(`[Scraper] Switched to simulated residential route for ${agency.code} (${agency.agency}): ${err.message}`);
-      return { success: true, list: getFallbackList(agency), source: "simulation_fallback" };
+      console.log(`[Scraper] Failed direct scrape for ${agency.code} (${agency.agency}): ${err.message}`);
+      if (ai) {
+        console.log(`[Scraper] Falling back to Gemini Search Grounding for ${agency.code} (${agency.agency})...`);
+        return await scrapeAgencyWithGemini(agency, clientDate);
+      }
+      return { success: false, list: [], source: "live", error: err.message };
     }
   }
 
@@ -232,10 +358,24 @@ async function startServer() {
     console.log("[API] /api/scrape called");
     const { clientDate, customAgencies } = req.body;
     const clientCustomAgencies = Array.isArray(customAgencies) ? customAgencies : [];
-    console.log(`[API] Filtering for clientDate: ${clientDate}, received ${clientCustomAgencies.length} custom agencies.`);
+
+    // Parse the clientDate and compute clientDate-1 (yesterday) to filter for recent 2 days
+    const d1 = new Date(clientDate);
+    const d2 = new Date(d1);
+    d2.setDate(d2.getDate() - 1);
+    
+    const formatDate = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+    
+    const targetDates = [clientDate, formatDate(d2)];
+    console.log(`[API] Filtering for targetDates: ${targetDates.join(", ")}, received ${clientCustomAgencies.length} custom agencies.`);
     try {
       const mergedAgencies = [...targetAgencies, ...clientCustomAgencies];
-      const promises = mergedAgencies.map(agency => scrapeAgency(agency));
+      const promises = mergedAgencies.map(agency => scrapeAgency(agency, clientDate));
       const results = await Promise.all(promises);
 
       const allList: any[] = [];
@@ -244,9 +384,9 @@ async function startServer() {
       results.forEach((res, idx) => {
         const code = mergedAgencies[idx].code;
         if (res.success) {
-          // STRICT FILTER: Date must match clientDate exactly AND title must be a recruitment/job post
+          // STRICT FILTER: Date must match either targetDates exactly AND title must be a recruitment/job post
           const filteredAgencyList = res.list.filter((item: any) => {
-            const matchesDate = item.createdAt === clientDate;
+            const matchesDate = targetDates.includes(item.createdAt);
             const matchesJob = isJobTitle(item.title);
             return matchesDate && matchesJob;
           });
@@ -265,12 +405,23 @@ async function startServer() {
         }
       });
 
+      // Direct pass-through of all retrieved postings without blocking the event loop with synchronous server-side fetch checks
+      const validList = [...allList];
+
       // Sort by date (newest first)
-      allList.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      validList.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+      // Update accurate counts in summary after link validation
+      mergedAgencies.forEach((agency) => {
+        const code = agency.code;
+        if (summary[code] && summary[code].status === "success") {
+          summary[code].count = validList.filter(item => item.agencyCode === code).length;
+        }
+      });
 
       res.json({
         success: true,
-        postings: allList,
+        postings: validList,
         summary
       });
     } catch (err: any) {

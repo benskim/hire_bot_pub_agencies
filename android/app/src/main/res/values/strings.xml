@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">pub-agencies-job</string>
-    <string name="title_activity_main">pub-agencies-job</string>
-    <string name="package_name">com.pubjob.app</string>
-    <string name="custom_url_scheme">com.pubjob.app</string>
-</resources>

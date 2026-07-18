@@ -34,5 +34,47 @@ export const TARGET_AGENCIES: AgencyConfig[] = [
     type: "ICE_NTT",
     url: "https://www.ice.go.kr/ice/na/ntt/selectNttList.do?mi=10997&bbsId=1981",
     baseUrl: "https://www.ice.go.kr"
+  },
+  {
+    code: "IC_SISEOL",
+    agency: "인천시설공단",
+    type: "SPRING",
+    url: "https://www.insiseol.or.kr/main/notice/job2.jsp",
+    baseUrl: "https://www.insiseol.or.kr"
+  },
+  {
+    code: "GY_SISEOL",
+    agency: "계양구 시설관리공단",
+    type: "GNUBOARD",
+    url: "https://www.gysiseol.or.kr/main/main.php?categoryid=07&menuid=09&groupid=00",
+    baseUrl: "https://www.gysiseol.or.kr"
+  },
+  {
+    code: "BP_GU",
+    agency: "부평구청",
+    type: "SPRING",
+    url: "https://www.icbp.go.kr/main/eminwon/eminwonJobList.do?pgno=1",
+    baseUrl: "https://www.icbp.go.kr"
+  },
+  {
+    code: "SEOHAE_OFFICE",
+    agency: "서해구청",
+    type: "SPRING",
+    url: "https://www.seohae.go.kr/open_content/main/community/news/job.jsp",
+    baseUrl: "https://www.seohae.go.kr"
+  },
+  {
+    code: "BPSS",
+    agency: "부평구 시설관리공단",
+    type: "SPRING",
+    url: "https://www.bpss.or.kr:444/open_content/main/community/job.jsp",
+    baseUrl: "https://www.bpss.or.kr:444"
+  },
+  {
+    code: "ISSI",
+    agency: "서해구 시설관리공단",
+    type: "ASP",
+    url: "https://www.issi.or.kr/sub/common_board.asp?mNo=MA030010000",
+    baseUrl: "https://www.issi.or.kr"
   }
 ];
