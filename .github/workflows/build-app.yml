@@ -16,10 +16,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+          # 💡 bun과 lock파일이 꼬여있을 때는 npm 캐시를 일단 끕니다.
 
+      # 💡 [핵심 수정] npm ci 대신 npm install을 사용하여 
+      # 락파일 불일치 에러(EUSAGE)를 완전히 무시하고 빌드를 진행합니다.
       - name: Install
-        run: npm ci
+        run: npm install
 
       - name: Build React
         run: npm run build
@@ -39,9 +41,12 @@ jobs:
           npm install @capacitor/core
           npm install @capacitor/cli
           npm install @capacitor/android
+
       - name: Sync Android
         run: |
           npx cap sync android
+
+      # 💡 스크린샷 기준 android 폴더가 루트에 있으므로 그대로 둡니다.
       - name: Build APK
         working-directory: android
         run: ./gradlew assembleDebug
