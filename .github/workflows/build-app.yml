@@ -16,6 +16,18 @@ jobs:
         with:
           node-version: 22
 
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Verify Java
+        run: |
+          java -version
+          javac -version
+
       - name: Install dependencies
         run: npm install
 
@@ -35,18 +47,9 @@ jobs:
       - name: Sync Android
         run: npx cap sync android
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-
-      - name: Verify Java
-        run: java -version
-
       - name: Build APK
         working-directory: android
-        run: ./gradlew assembleDebug
+        run: chmod +x gradlew && ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
