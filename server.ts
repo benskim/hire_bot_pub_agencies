@@ -4,6 +4,9 @@ import { createServer as createViteServer } from "vite";
 import * as cheerio from "cheerio";
 import { GoogleGenAI, Type } from "@google/genai";
 import { TARGET_AGENCIES } from "./src/data/targetAgencies";
+import dns from "dns";
+
+dns.setDefaultResultOrder("ipv4first");
 
 // Helper to determine if a title represents a strict job notice
 function isJobTitle(title: string): boolean {

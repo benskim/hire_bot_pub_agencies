@@ -4,7 +4,6 @@ import { TARGET_AGENCIES } from "./data/targetAgencies";
 import { 
   trackEvent, 
   trackButtonClick, 
-  trackUIAction,
   trackScrapeAction, 
   trackException,
   saveAddedAgencyToFirebase,
@@ -49,32 +48,6 @@ export default function App() {
   // Track initial page view in Firebase Google Analytics
   useEffect(() => {
     trackEvent("page_view", { page_title: "JobScraper Emulator" });
-  }, []);
-
-  useEffect(() => {
-    const handleGlobalClick = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null;
-      const element = target?.closest("button, a, input, textarea, select, [role='button']") as HTMLElement | null;
-
-      if (!element) return;
-
-      const label =
-        element.getAttribute("aria-label") ||
-        element.getAttribute("title") ||
-        element.textContent?.trim().slice(0, 80) ||
-        "";
-      const tagName = element.tagName.toLowerCase();
-      const action = tagName === "a" ? "link_click" : tagName === "button" || element.getAttribute("role") === "button" ? "button_click" : "control_interaction";
-
-      trackUIAction(action, {
-        element: tagName,
-        label,
-        url: tagName === "a" ? (element as HTMLAnchorElement).href : undefined,
-      });
-    };
-
-    document.addEventListener("click", handleGlobalClick);
-    return () => document.removeEventListener("click", handleGlobalClick);
   }, []);
 
   // Load custom agencies from localStorage

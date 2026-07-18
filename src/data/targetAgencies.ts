@@ -46,8 +46,8 @@ export const TARGET_AGENCIES: AgencyConfig[] = [
     code: "IC_SILVER",
     agency: "노인종합문화회관",
     type: "SPRING",
-    url: "http://insiseol.or.kr/culture/silver/board/job.jsp",
-    baseUrl: "http://insiseol.or.kr"
+    url: "https://www.insiseol.or.kr/culture/silver/board/job.jsp",
+    baseUrl: "https://www.insiseol.or.kr"
   },
   {
     code: "IC_YOUTH_1",
