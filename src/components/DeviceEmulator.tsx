@@ -383,15 +383,11 @@ export default function DeviceEmulator({
                   <Building className="w-3 h-3 text-blue-500 dark:text-blue-400 shrink-0" />
                   <span className="text-blue-800 dark:text-blue-200 truncate max-w-[100px]">{agency.agency}</span>
                   <button
-<<<<<<< HEAD
-                    onClick={() => setAgencyToDelete({ code: agency.code, name: agency.agency, isDefault: false })}
-=======
                     onClick={() => {
                       trackButtonClick("remove_custom_agency_chip", agency.agency);
                       trackEvent("agency_remove_clicked", { agency_code: agency.code });
-                      onRemoveAgency(agency.code);
+                      setAgencyToDelete({ code: agency.code, name: agency.agency, isDefault: false });
                     }}
->>>>>>> 0d10c69 (firebase + flutter setting.)
                     className="p-0.5 text-slate-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-colors cursor-pointer shrink-0"
                     title="추가 수집 대상 삭제"
                   >

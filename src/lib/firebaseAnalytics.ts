@@ -29,32 +29,18 @@ import { getFirestore, collection, addDoc, Firestore } from "firebase/firestore"
 // .env 환경변수를 사용하여 주입할 수 있습니다. (Vite 환경 변수 사용 권장)
 // =========================================================================
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "YOUR_FIREBASE_API_KEY",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "YOUR_FIREBASE_AUTH_DOMAIN",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "YOUR_FIREBASE_PROJECT_ID",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "YOUR_FIREBASE_STORAGE_BUCKET",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "YOUR_FIREBASE_MESSAGING_SENDER_ID",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "YOUR_FIREBASE_APP_ID",
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "YOUR_FIREBASE_MEASUREMENT_ID"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDTujOvdssK4GJEu67c5psMX-uyMeenL-U",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "hire-noti.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "hire-noti",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "hire-noti.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "853343008574",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:853343008574:web:74e9b2f846786314cade6f",
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-SK96SK9J47"
 };
 
 let app;
 let analytics: Analytics | null = null;
 let db: Firestore | null = null;
-
-// 2. 안전한 초기화 (중복 초기화 방지)
-if (typeof window !== "undefined") {
-  // 이미 앱이 초기화되어 있다면 기존 앱을 쓰고, 없으면 새로 초기화합니다.
-  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-  
-  // 브라우저 환경에서만 Analytics와 Firestore를 켭니다.
-  analytics = getAnalytics(app);
-  db = getFirestore(app);
-}
-
-// 3. 다른 파일에서 쓸 수 있도록 내보내기
-export { app, analytics, db };
-
 
 // Check if the configuration is using the default template values
 const isPlaceholder = (val: string) => !val || val.includes("YOUR_FIREBASE_") || val.startsWith("YOUR_");
@@ -81,6 +67,9 @@ if (isFirebaseConfigured) {
 } else {
   console.log("ℹ️ Firebase is running in simulation/dev mode because default placeholder credentials are used. Event tracking and simulated Crashlytics logs will be outputted to the developer console.");
 }
+
+// 3. 다른 파일에서 쓸 수 있도록 내보내기
+export { app, analytics, db };
 
 /**
  * 1. 일반 이벤트 로깅 (GA)
